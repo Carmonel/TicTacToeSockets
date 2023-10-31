@@ -1,109 +1,50 @@
 import java.io.*;
 import java.net.*;
 import java.util.LinkedList;
-import java.util.Vector;
-
-import static java.lang.Integer.parseInt;
 
 public class Server {
-    static int PORT;
-    static LinkedList<ClientThread> clientsList = new LinkedList<>();
-    private static Socket clientSocket;
+    final static int PORT = 10001;
+    static LinkedList<PlayerThread> playerList = new LinkedList<>();
+    private static Socket playerSocket;
     private static ServerSocket serverSocket;
-    private Vector<TicTacToe> games;
+    private static LinkedList<Thread> games = new LinkedList<>();
 
     public static void main(String[] args) throws IOException {
-        System.out.println("Print port: ");
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        PORT = parseInt(br.readLine());
-
         serverSocket = new ServerSocket(PORT);
-        System.out.println("Start Server on " + PORT + " port" + "\nWaiting for new connections...");
-        while (true) {
+        System.out.println("Start Server on " + PORT + " port");
+        while(true) {
+            // Waiting for new connection
             try {
-                clientSocket = serverSocket.accept();
-                System.out.println("Got new connection.");
+                playerSocket = serverSocket.accept();
 
-                ClientThread clientThread = new ClientThread(clientSocket);
-                clientsList.add(clientThread);
+                // Creating new client
+                PlayerThread clientThread = new PlayerThread(playerSocket);
+                // Удаление старого клиента с тем же никнеймом
+                removeClientWithSameName(clientThread.name);
+                playerList.add(clientThread);
+
+                System.out.println("Got new connection. Players in queue: " + playerList.size());
+                // Creating new games until size() != 0 OR 1
+                while (playerList.size() > 1){
+                    Thread newGame = new Thread(new TicTacToe(playerList.get(0), playerList.get(1)));
+                    games.add(newGame);
+                    games.get(games.size()-1).start();
+                    playerList.remove(0);
+                    playerList.remove(1);
+                    System.out.println("New game started. Players in queue: " + playerList.size());
+                }
             }
             catch(IOException e) {
                 e.printStackTrace();
             }
         }
     }
-}
-
-class TicTacToe{
-    private char[][] field;
-    ClientThread firstUser;
-    ClientThread secondUser;
-    TicTacToe(ClientThread newConnection){
-        firstUser = newConnection;
-        field = new char[10][10];
-
-        if (!firstUser.sendMessageToClient("You are first gamer. You are 'X'. \nWaiting for new connection...")){
-            /* error */
-        }
-    }
-}
-
-class ClientThread extends Thread {
-    Socket socket;
-    BufferedReader fromClientStream;
-    PrintWriter toClientStream;
-    String name;
-
-    ClientThread(Socket s) throws IOException {
-        socket = s;
-        fromClientStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        toClientStream = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())));
-        start();
-    }
-    public boolean sendMessageToClient(String message){
-        try{
-            toClientStream.write(message + "\n");
-            return true;
-        }
-        catch (Exception e){
-            e.printStackTrace();
-            return false;
-        }
-    }
-    public void run() {
-        try {
-            // Read and save username
-            name = fromClientStream.readLine();
-            while(true) {
-                // Continuous message
-                String clientMessage = fromClientStream.readLine();
-                // log to server
-                System.out.println("log: " + name + ": " + clientMessage);
-                String[] spittedMessage = clientMessage.split(" ");
-
-                // if @senduser
-                if(spittedMessage[0].equals("@senduser")) {
-                    for (ClientThread ct : Server.clientsList) {
-                        if(spittedMessage[1].equals(ct.name)) {
-                            ct.toClientStream.write(name+ " [private]:");
-                            for (int i = 2; i < spittedMessage.length; i++) {
-                                ct.toClientStream.write(" " +spittedMessage[i]);
-                            }
-                            ct.toClientStream.write("\n");
-                            ct.toClientStream.flush();
-                        }
-                    }
-                }else {
-                    // else write to everyone
-                    for (ClientThread ct : Server.clientsList) {
-                        ct.toClientStream.write(name+ ": " + clientMessage + "\n");
-                        ct.toClientStream.flush();
-                    }
-                }
+    private static void removeClientWithSameName(String name) {
+        for (PlayerThread clientThread : playerList) {
+            if (clientThread.name != null && clientThread.name.equals(name)) {
+                playerList.remove(clientThread);
+                return;
             }
-        }
-        catch(Exception e) {
-            e.printStackTrace();
         }
     }
 }

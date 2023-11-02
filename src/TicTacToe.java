@@ -77,7 +77,17 @@ public class TicTacToe implements Runnable {
     }
 
     void printFieldToPlayers(){
-
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n-----------------------------------------");
+        for (int i = 0; i < 10; i++){
+            for (int j = 0; j < 10; j++){
+                sb.append("| " + field[i][j] + " ");
+            }
+            sb.append("|");
+            sb.append("\n-----------------------------------------");
+        }
+        player1.toPlayerStream.write(sb.toString());
+        player2.toPlayerStream.write(sb.toString());
     }
 
     String[] messageFromPlayer(PlayerThread player) throws IOException {

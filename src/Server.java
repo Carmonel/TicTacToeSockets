@@ -12,19 +12,23 @@ public class Server {
     public static void main(String[] args) throws IOException {
         serverSocket = new ServerSocket(PORT);
         System.out.println("Start Server on " + PORT + " port");
+
+        // Поток для удаления завершенных игр
+        Thread deleteGamesAfterEnding = new Thread(Server::deleteGamesAfterEnding);
+        deleteGamesAfterEnding.setDaemon(true);
+        deleteGamesAfterEnding.start();
+
         while(true) {
             // Waiting for new connection
             try {
+                // Новый клиент
                 playerSocket = serverSocket.accept();
-
-                // Creating new client
                 PlayerThread clientThread = new PlayerThread(playerSocket);
-                // Удаление старого клиента с тем же никнеймом
                 removeClientWithSameName(clientThread.name);
                 playerList.add(clientThread);
-
                 System.out.println("Got new connection. Players in queue: " + playerList.size());
-                // Creating new games until size() != 0 OR 1
+
+                // Создание игр, пока кол-во игроков больше 1
                 while (playerList.size() > 1){
                     Thread newGame = new Thread(new TicTacToe(playerList.get(0), playerList.get(1)));
                     games.add(newGame);
@@ -44,6 +48,16 @@ public class Server {
             if (clientThread.name != null && clientThread.name.equals(name)) {
                 playerList.remove(clientThread);
                 return;
+            }
+        }
+    }
+    private static void deleteGamesAfterEnding(){
+        while (true){
+            for (Thread thread : games) {
+                if (!thread.isAlive()) {
+                    games.remove(thread);
+                    System.out.println("Game has finished.");
+                }
             }
         }
     }

@@ -1,6 +1,5 @@
 import java.io.IOException;
 import java.util.Objects;
-
 public class TicTacToe implements Runnable {
     private char[][] field;
     private static PlayerThread player1;
@@ -26,17 +25,19 @@ public class TicTacToe implements Runnable {
 
         try{
             while (true){
-                // Trying catch right message
+                // Попытка поймать правильное сообщение
                 String[] messageFromPlayer1 = messageFromPlayer(player1);
+                // Ловим ошибку
                 while (!Objects.equals(messageFromPlayer1[0], "@error")) {
                     messageFromPlayer1 = messageFromPlayer(player1);
                 }
 
+                // Случай "игрок сдался"
                 if (messageFromPlayer1[0].equals("@exit")){
                     player2.toPlayerStream.write("First player left. You won!");
                     /* some code */
                 }
-                // If "@step"
+                // Случай "игрок делает ход"
                 else{
                     int x = Integer.parseInt(messageFromPlayer1[1]);
                     int y = Integer.parseInt(messageFromPlayer1[2]);
